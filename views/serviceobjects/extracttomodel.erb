@@ -1,0 +1,35 @@
+<section id="extracttomodel" class="slide">
+  <h2>Logic is extracted from controller and moved to a model</h2>
+
+  <script type="syntaxhighlighter" class="brush: ruby">
+
+    class Invite < ActiveRecord::Base
+
+      def accept!(user, time=Time.now)
+        update_attributes!(accepted_by_user_id: user.id,
+                           accepted_at: time)
+      end
+
+    end
+
+    class InviteController < ApplicationController
+
+      def accept
+        invite = Invite.find(token: params[:token])
+
+        if invite
+          invite.accept!(current_user, Time.now)
+          redirect_to profile_url, notice: "Welcome to our service!"
+        else
+          redirect_to landing_page_url, notice: "Access is invite-only, sorry!"
+        end
+
+      end
+
+    end
+  </script>
+
+  <p> Is it better? Not much. </p>
+  <p> What can go wrong, if you follow a "Fat model" pattern? </p>
+
+</section>

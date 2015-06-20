@@ -117,6 +117,14 @@ class App < Sinatra::Base
     erb :railsengines
   end
 
+  get "/formobjects" do
+    erb :formobjects
+  end
+
+  get "/serviceobjects" do
+    erb :serviceobjects
+  end
+
   #get "/cssbestpractices" do
   #  erb :cssbestpractices
   #end

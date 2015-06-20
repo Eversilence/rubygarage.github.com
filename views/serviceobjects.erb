@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Service objects</title>
+  <link href="assets/serviceobjects.css" rel="stylesheet">
+  <script src="assets/serviceobjects.js"></script>
+</head>
+
+<body class="deck-container">
+
+<!-- Begin slides. Just make elements with a class of slide. -->
+<%= partial :'serviceobjects/topic' %>
+<%= partial :'serviceobjects/fatcontroller' %>
+<%= partial :'serviceobjects/extracttomodel' %>
+<%= partial :'serviceobjects/fatmodel' %>
+<%= partial :'serviceobjects/introduceserviceobject' %>
+<%= partial :'serviceobjects/howtocreate' %>
+<%= partial :'serviceobjects/poroservice' %>
+
+
+
+<!-- End slides. -->
+
+<!-- deck.navigation snippet -->
+<a href="#" class="deck-prev-link" title="Previous">&#8592;</a>
+<a href="#" class="deck-next-link" title="Next">&#8594;</a>
+
+<!-- deck.status snippet -->
+<p class="deck-status">
+  <span class="deck-status-current"></span>
+  /
+  <span class="deck-status-total"></span>
+</p>
+
+<!-- deck.hash snippet -->
+<a href="." title="Permalink to this slide" class="deck-permalink">#</a>
+
+</body>
+</html>

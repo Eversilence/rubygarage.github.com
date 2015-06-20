@@ -1,0 +1,75 @@
+<section id="poroservice" class="slide">
+  <h2>General entity service</h2>
+
+  <p>
+    This implementation is a Plain Old Ruby Object (PORO).
+  </p>
+
+  <ul>
+    <li>
+      Class should be named after entity on which applies it's methods with word
+      'Service' appended to the end. For example: NotificationsService, InvitesService)
+    </li>
+    <li>
+      You need to implement initialize method and public instance methods,
+      that will do some action based on parameters passed to initializer.
+    </li>
+    <li>
+      Method names should be verbs.
+    </li>
+
+  <script type="syntaxhighlighter" class="brush: ruby">
+
+    class ChatsService
+      def initialize(creater, users, chat_id = nil)
+        @creater = creater
+        @users = users || []
+        @chat = Chat.find(chat_id) if chat_id #to add users in group chat
+      end
+
+      def find_or_create_with_users
+        if @chat
+          add_to_chat
+        else
+          find_by_users || create_with_users
+        end
+      end
+
+      private
+
+      def create_with_users
+        # some private method
+      end
+
+      def find_by_users
+        # some private method
+      end
+
+      def add_to_chat
+        # some private method
+      end
+    end
+
+  </script>
+
+  <p>Pros: </p>
+  <ul>
+    <li>
+      # some pros
+    </li>
+    <li>
+      # some pros
+    </li>
+  </ul>
+
+  <p>Cons: </p>
+  <ul>
+    <li>
+      # some cons
+    </li>
+    <li>
+      # some cons
+    </li>
+  </ul>
+
+</section>

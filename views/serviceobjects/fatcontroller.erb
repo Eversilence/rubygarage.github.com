@@ -1,0 +1,30 @@
+<section id="fatcontroller" class="slide">
+  <h2>Let's look at this controller action:</h2>
+
+  <script type="syntaxhighlighter" class="brush: ruby">
+
+    class InviteController < ApplicationController
+
+      def accept
+        invite = Invite.find(token: params[:token])
+
+        if invite
+          invite.update!(accepted_by_user_id: current_user.id,
+                         accepted_at: Time.now)
+          redirect_to profile_url, notice: "Welcome to our service!"
+        else
+          redirect_to landing_page_url, notice: "Access is invite only, sorry!"
+        end
+
+      end
+
+    end
+
+  </script>
+
+  <p> Why is it bad? It is 'fat'. Controllers should not contain business logic. </p>
+  <p> In fact, Rails promotes pattern "Fat model, skinny controller". </p>
+
+  <p> Let's try to move the logic to a model. </p>
+
+</section>

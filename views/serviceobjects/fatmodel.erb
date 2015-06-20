@@ -1,0 +1,64 @@
+<section id="fatmodel" class="slide">
+  <h2> This is really-really bad.</h2>
+
+  <script type="syntaxhighlighter" class="brush: ruby">
+
+    class User < ActiveRecord::Base
+      # validations and associations
+
+      def check_package_limits(options)
+        success    = { success: true }
+        no_success = { success: false }
+
+        package = package_activities.active.primary.first.package
+        opt = options[:types].map do |type|
+          case type
+          when :items
+            month_item_created_size = statistic.month_item_created_size
+            if package.presence
+              if package.item_limit > month_item_created_size
+                success
+              else
+                no_success.merge(
+                  message: I18n.t('packages.messages.items.limit_get_by_package')
+                )
+              end
+            else
+              if Setting.get(:user, :item_limits).to_i > month_item_created_size
+                success
+              else
+                no_success.merge(
+                  message: I18n.t('packages.messages.items.limit_get_by_default')
+                )
+              end
+            end
+          end
+        end
+        opt
+      end
+
+      def update_package(options)
+        ::User::UpdatePackageService.new(
+          package_activities, options.merge(user_id: id)).execute
+      end
+
+      def favorite_remove( item_id )
+        favorite = Favorite.where( item_id: item_id, user_id: self.id ).first
+        favorite.delete if favoritedef payment_guid
+        "#{self.id}-#{Time.now.to_i}"
+      end
+
+      # 350 more lines of code... ->
+    end
+
+  </script>
+
+  <p>
+    As we have seen, moving logic from controller to model doesn't help us much
+    in a long term perspective. This model is already a nightmare to test, change
+    and even hard to comprehend.
+
+    So, what can we do?
+  </p>
+
+</section>

@@ -1,0 +1,41 @@
+<section id="introduceserviceobject" class="slide">
+  <h2>Logic is extracted to InviteService: </h2>
+
+  <script type="syntaxhighlighter" class="brush: ruby">
+
+    class InviteService
+
+      def initialize(token, user, time=Time.now)
+        @user = user
+        @time = time
+        @invite = Invite.find(token: token)
+      end
+
+      def accept_invite
+        return false unless @invite
+
+        @invite.update(accepted_by_user_id: user.id,
+                      accepted_at: time)
+      end
+
+    end
+
+    class Invite < ActiveRecord::Base
+    end
+
+    class InviteController < ApplicationController
+
+      def accept
+        if InviteService.new(params[:token], current_user).accept_invite
+          redirect_to profile_url, notice: "Welcome to our service!"
+        else
+          redirect_to landing_page_url, notice: "Access is invite-only, sorry!"
+        end
+      end
+
+    end
+  </script>
+
+  <p> This way model only handles associations, validations and query interface. </p>
+
+</section>
