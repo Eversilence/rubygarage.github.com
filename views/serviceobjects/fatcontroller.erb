@@ -3,19 +3,38 @@
 
   <script type="syntaxhighlighter" class="brush: ruby">
 
-    class InviteController < ApplicationController
+    class ChargesController < ApplicationController
 
-      def accept
-        invite = Invite.find(token: params[:token])
-
-        if invite
-          invite.update!(accepted_by_user_id: current_user.id,
-                         accepted_at: Time.now)
-          redirect_to profile_url, notice: "Welcome to our service!"
+      def create
+        transaction_result = Stripe::Charge.create(
+                              amount:   params[:charge][:ammount]
+                              currency: "usd",
+                              customer: @customer.id,
+                              card:     @card)
+        if transaction_result
+          redirect_to orders_url, notice: "Your purchase has been successfull"
         else
-          redirect_to landing_page_url, notice: "Access is invite only, sorry!"
-        end
+          redirect_to user_billing_url, notice: "There was a problem with your payment"
+      end
 
+      private
+
+      def get_customer
+        if current_user.stripe_customer_id.present?
+          @customer = Stripe::Customer.retrieve(current_user.stripe_customer_id)
+        else
+          @customer = Stripe::Customer.create(email: current_user.email)
+          current_user.stripe_customer_id = customer.id
+          current_user.save
+        end
+      end
+
+      def get_card
+        if @customer.sources.count == 0
+          @customer.sources.create(source: @params['charge']['token'])
+        else
+          @customer.sources.first
+        end
       end
 
     end

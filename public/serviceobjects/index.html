@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Service objects</title>
+  <link href="assets/serviceobjects.css" rel="stylesheet">
+  <script src="assets/serviceobjects.js"></script>
+</head>
+
+<body class="deck-container">
+
+<!-- Begin slides. Just make elements with a class of slide. -->
+<section id="topic" class="slide">
+  <div class="vcenter">
+    <h1>Service Objects</h1>
+  </div>
+</section>
+<section id="fatcontroller" class="slide">
+  <h2>Let's look at this controller action:</h2>
+
+  <script type="syntaxhighlighter" class="brush: ruby">
+
+    class ChargesController < ApplicationController
+
+      def create
+        transaction_result = Stripe::Charge.create(
+                              amount:   params[:charge][:ammount]
+                              currency: "usd",
+                              customer: @customer.id,
+                              card:     @card)
+        if transaction_result
+          redirect_to orders_url, notice: "Your purchase has been successfull"
+        else
+          redirect_to user_billing_url, notice: "There was a problem with your payment"
+      end
+
+      private
+
+      def get_customer
+        if current_user.stripe_customer_id.present?
+          @customer = Stripe::Customer.retrieve(current_user.stripe_customer_id)
+        else
+          @customer = Stripe::Customer.create(email: current_user.email)
+          current_user.stripe_customer_id = customer.id
+          current_user.save
+        end
+      end
+
+      def get_card
+        if @customer.sources.count == 0
+          @customer.sources.create(source: @params['charge']['token'])
+        else
+          @customer.sources.first
+        end
+      end
+
+    end
+
+  </script>
+
+  <p> Why is it bad? It is 'fat'. Controllers should not contain business logic. </p>
+  <p> In fact, Rails promotes pattern "Fat model, skinny controller". </p>
+
+  <p> Let's try to move the logic to a model. </p>
+
+</section>
+<section id="extracttomodel" class="slide">
+  <h2>Logic is extracted from controller and moved to a model</h2>
+
+  <script type="syntaxhighlighter" class="brush: ruby">
+
+    class Invite < ActiveRecord::Base
+
+      def accept!(user, time=Time.now)
+        update_attributes!(accepted_by_user_id: user.id,
+                           accepted_at: time)
+      end
+
+    end
+
+    class InviteController < ApplicationController
+
+      def accept
+        invite = Invite.find(token: params[:token])
+
+        if invite
+          invite.accept!(current_user, Time.now)
+          redirect_to profile_url, notice: "Welcome to our service!"
+        else
+          redirect_to landing_page_url, notice: "Access is invite-only, sorry!"
+        end
+
+      end
+
+    end
+  </script>
+
+  <p> Is it better? Not much. </p>
+  <p> What can go wrong, if you follow a "Fat model" pattern? </p>
+
+</section>
+<section id="fatmodel" class="slide">
+  <h2> This is really bad.</h2>
+
+  <script type="syntaxhighlighter" class="brush: ruby">
+
+    class User < ActiveRecord::Base
+
+      def charge(amount, token = nil)
+        customer = stripe_customer
+
+        if customer.sources.count == 0
+           card = customer.sources.create(source: token)
+        else
+           card = customer.sources.first
+        end
+
+        transaction_result = Stripe::Charge.create(
+                              amount:   amount, # in cents
+                              currency: "usd",
+                              customer: customer.id,
+                              card:     card)
+      end
+
+      def stripe_customer
+        if self.stripe_customer_id.present?
+          customer = Stripe::Customer.retrieve(self.stripe_customer_id)
+        else
+          customer = Stripe::Customer.create(email: self.email)
+          self.stripe_customer_id = customer.id
+          self.save
+        end
+      end
+
+    end
+
+    class ChargesController < ApplicationController
+
+      def create
+        transaction_result = current_user.charge(params[:amount], params[:token])
+        if transaction_result
+          redirect_to orders_url, notice: "Your purchase has been successfull"
+        else
+          redirect_to user_billing_url, notice: "There was a problem with your payment"
+      end
+
+    end
+
+  </script>
+
+  <p>
+    As our project will grow, model will get more and more responsibilities.
+    Eventually, it will become a mess of different methods doing very different
+    things.
+
+    Such model is hard to test, change and has needless responsibilities.
+
+    So, moving logic from controller to model doesn't help us much in a long term
+    perspective.
+
+
+    So, what can we do?
+  </p>
+
+</section>
+<section id="introduceserviceobject" class="slide">
+  <h2>Logic is extracted to ChargesService: </h2>
+
+  <script type="syntaxhighlighter" class="brush: ruby">
+
+    class User < ActiveRecord::Base
+      # associations, validations, scopes, etc
+    end
+
+    class ChargesService
+
+      def initialize(amount, user, token = nil)
+        @user = user
+        @amount = amount
+        @token = token
+      end
+
+      def charge
+        @customer = get_customer
+        @card     = get_card
+        transaction_result = Stripe::Charge.create(
+                              amount:   @amount
+                              currency: "usd",
+                              customer: @customer.id,
+                              card:     @card)
+
+        check_for_canceled_subscriptions unless @subscriptions.count == 0
+      end
+
+      private
+
+      def get_customer
+        if @user.stripe_customer_id.present? && @user.stripe_customer_id != 0
+          Stripe::Customer.retrieve(@user.stripe_customer_id)
+        else
+          customer = Stripe::Customer.create(email: @user.email)
+          @user.stripe_customer_id = customer.id
+          @user.save
+          customer
+        end
+      end
+
+      def get_card
+        if @customer.sources.count == 0
+          @customer.sources.create(source: @token)
+        else
+          @customer.sources.first
+        end
+      end
+
+  </script>
+
+  <p> This way model only handles associations, validations and query interface. </p>
+
+</section>
+<section id="howtocreate" class="slide">
+  <h2>How to create a ServiceObject?</h2>
+
+  <p> There two ways to create ServiceObjects and they have a common parts:
+
+  <ul>
+    <li>
+      All ServiceObject live in 'app/services' directory. You have to create this
+      directory by yourself, but Rails will autoload classes inside for you.
+    </li>
+
+    <li>
+      It's class does not have to inherit from any specific class.
+    </li>
+  </ul>
+
+  <p> Now we will look at 2 different implementations and their strenths and weaknesses </p>
+
+</section>
+<section id="poroservice" class="slide">
+  <h2>General entity service</h2>
+
+  <p>
+    This implementation is a Plain Old Ruby Object (PORO).
+  </p>
+
+  <ul>
+    <li>
+      Class should be named after entity on which applies it's methods with word
+      'Service' appended to the end. For example: NotificationsService, InvitesService)
+    </li>
+    <li>
+      You need to implement initialize method and public instance methods,
+      that will do some actions based on arguments passed to this class.
+    </li>
+    <li>
+      Method names should be verbs.
+    </li>
+    <li>
+      Incapsulates all bussiness-logic inside it's methods.
+    </li>
+
+  <script type="syntaxhighlighter" class="brush: ruby">
+
+    class ChargesService
+
+      def initialize(amount, user, token = nil, plan = nil)
+        @user = user
+        @amount = amount
+        @token = token
+      end
+
+      def charge
+        # implementation
+      end
+
+      def subscribe
+        # implementation
+      end
+
+      private
+
+      def get_customer
+        # implementation
+      end
+
+      def get_card
+        # implementation
+      end
+
+    end
+
+  </script>
+
+  <p>Pros: </p>
+  <ul>
+    <li>
+      Incapsulates all business-logic of a given entity inside.For example, To understand,
+      how your payment system works, someone will need to take a look at only
+      one class - ChargesService.
+    </li>
+  </ul>
+
+  <p>Cons: </p>
+  <ul>
+    <li>
+      In time, can grow to a big size, making it hard to read and change.
+    </li>
+    <li>
+
+    </li>
+  </ul>
+
+</section>
+
+
+
+<!-- End slides. -->
+
+<!-- deck.navigation snippet -->
+<a href="#" class="deck-prev-link" title="Previous">&#8592;</a>
+<a href="#" class="deck-next-link" title="Next">&#8594;</a>
+
+<!-- deck.status snippet -->
+<p class="deck-status">
+  <span class="deck-status-current"></span>
+  /
+  <span class="deck-status-total"></span>
+</p>
+
+<!-- deck.hash snippet -->
+<a href="." title="Permalink to this slide" class="deck-permalink">#</a>
+
+</body>
+</html>

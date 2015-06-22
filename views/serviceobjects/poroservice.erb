@@ -12,42 +12,43 @@
     </li>
     <li>
       You need to implement initialize method and public instance methods,
-      that will do some action based on parameters passed to initializer.
+      that will do some actions based on arguments passed to this class.
     </li>
     <li>
       Method names should be verbs.
     </li>
+    <li>
+      Incapsulates all bussiness-logic inside it's methods.
+    </li>
 
   <script type="syntaxhighlighter" class="brush: ruby">
 
-    class ChatsService
-      def initialize(creater, users, chat_id = nil)
-        @creater = creater
-        @users = users || []
-        @chat = Chat.find(chat_id) if chat_id #to add users in group chat
+    class ChargesService
+
+      def initialize(amount, user, token = nil, plan = nil)
+        @user = user
+        @amount = amount
+        @token = token
       end
 
-      def find_or_create_with_users
-        if @chat
-          add_to_chat
-        else
-          find_by_users || create_with_users
-        end
+      def charge
+        # implementation
+      end
+
+      def subscribe
+        # implementation
       end
 
       private
 
-      def create_with_users
-        # some private method
+      def get_customer
+        # implementation
       end
 
-      def find_by_users
-        # some private method
+      def get_card
+        # implementation
       end
 
-      def add_to_chat
-        # some private method
-      end
     end
 
   </script>
@@ -55,20 +56,19 @@
   <p>Pros: </p>
   <ul>
     <li>
-      # some pros
-    </li>
-    <li>
-      # some pros
+      Incapsulates all business-logic of a given entity inside. For example, To understand,
+      how your payment system works, someone will need to take a look at only
+      one class - ChargesService.
     </li>
   </ul>
 
   <p>Cons: </p>
   <ul>
     <li>
-      # some cons
+      In time, can grow to a big size, making it hard to read and change.
     </li>
     <li>
-      # some cons
+
     </li>
   </ul>
 

@@ -1,39 +1,53 @@
 <section id="introduceserviceobject" class="slide">
-  <h2>Logic is extracted to InviteService: </h2>
+  <h2>Logic is extracted to ChargesService: </h2>
 
   <script type="syntaxhighlighter" class="brush: ruby">
 
-    class InviteService
+    class User < ActiveRecord::Base
+      # associations, validations, scopes, etc
+    end
 
-      def initialize(token, user, time=Time.now)
+    class ChargesService
+
+      def initialize(amount, user, token = nil)
         @user = user
-        @time = time
-        @invite = Invite.find(token: token)
+        @amount = amount
+        @token = token
       end
 
-      def accept_invite
-        return false unless @invite
+      def charge
+        @customer = get_customer
+        @card     = get_card
+        transaction_result = Stripe::Charge.create(
+                              amount:   @amount
+                              currency: "usd",
+                              customer: @customer.id,
+                              card:     @card)
 
-        @invite.update(accepted_by_user_id: user.id,
-                      accepted_at: time)
+        check_for_canceled_subscriptions unless @subscriptions.count == 0
       end
 
-    end
+      private
 
-    class Invite < ActiveRecord::Base
-    end
-
-    class InviteController < ApplicationController
-
-      def accept
-        if InviteService.new(params[:token], current_user).accept_invite
-          redirect_to profile_url, notice: "Welcome to our service!"
+      def get_customer
+        if @user.stripe_customer_id.present? && @user.stripe_customer_id != 0
+          Stripe::Customer.retrieve(@user.stripe_customer_id)
         else
-          redirect_to landing_page_url, notice: "Access is invite-only, sorry!"
+          customer = Stripe::Customer.create(email: @user.email)
+          @user.stripe_customer_id = customer.id
+          @user.save
+          customer
         end
       end
 
-    end
+      def get_card
+        if @customer.sources.count == 0
+          @customer.sources.create(source: @token)
+        else
+          @customer.sources.first
+        end
+      end
+
   </script>
 
   <p> This way model only handles associations, validations and query interface. </p>

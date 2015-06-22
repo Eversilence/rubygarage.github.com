@@ -1,62 +1,62 @@
 <section id="fatmodel" class="slide">
-  <h2> This is really-really bad.</h2>
+  <h2> This is really bad.</h2>
 
   <script type="syntaxhighlighter" class="brush: ruby">
 
     class User < ActiveRecord::Base
-      # validations and associations
 
-      def check_package_limits(options)
-        success    = { success: true }
-        no_success = { success: false }
+      def charge(amount, token = nil)
+        customer = stripe_customer
 
-        package = package_activities.active.primary.first.package
-        opt = options[:types].map do |type|
-          case type
-          when :items
-            month_item_created_size = statistic.month_item_created_size
-            if package.presence
-              if package.item_limit > month_item_created_size
-                success
-              else
-                no_success.merge(
-                  message: I18n.t('packages.messages.items.limit_get_by_package')
-                )
-              end
-            else
-              if Setting.get(:user, :item_limits).to_i > month_item_created_size
-                success
-              else
-                no_success.merge(
-                  message: I18n.t('packages.messages.items.limit_get_by_default')
-                )
-              end
-            end
-          end
+        if customer.sources.count == 0
+           card = customer.sources.create(source: token)
+        else
+           card = customer.sources.first
         end
-        opt
+
+        transaction_result = Stripe::Charge.create(
+                              amount:   amount, # in cents
+                              currency: "usd",
+                              customer: customer.id,
+                              card:     card)
       end
 
-      def update_package(options)
-        ::User::UpdatePackageService.new(
-          package_activities, options.merge(user_id: id)).execute
+      def stripe_customer
+        if self.stripe_customer_id.present?
+          customer = Stripe::Customer.retrieve(self.stripe_customer_id)
+        else
+          customer = Stripe::Customer.create(email: self.email)
+          self.stripe_customer_id = customer.id
+          self.save
+        end
       end
 
-      def favorite_remove( item_id )
-        favorite = Favorite.where( item_id: item_id, user_id: self.id ).first
-        favorite.delete if favoritedef payment_guid
-        "#{self.id}-#{Time.now.to_i}"
+    end
+
+    class ChargesController < ApplicationController
+
+      def create
+        transaction_result = current_user.charge(params[:amount], params[:token])
+        if transaction_result
+          redirect_to orders_url, notice: "Your purchase has been successfull"
+        else
+          redirect_to user_billing_url, notice: "There was a problem with your payment"
       end
 
-      # 350 more lines of code... ->
     end
 
   </script>
 
   <p>
-    As we have seen, moving logic from controller to model doesn't help us much
-    in a long term perspective. This model is already a nightmare to test, change
-    and even hard to comprehend.
+    As our project will grow, model will get more and more responsibilities.
+    Eventually, it will become a mess of different methods doing very different
+    things.
+
+    Such model is hard to test, change and has needless responsibilities.
+
+    So, moving logic from controller to model doesn't help us much in a long term
+    perspective.
+
 
     So, what can we do?
   </p>
